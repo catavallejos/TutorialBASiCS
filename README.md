@@ -4,13 +4,28 @@ This repository contains a tutorial for the analysis of single-cell RNA-seq data
 
 ## Example dataset
 
-We will illustrate the use of BASiCS using the mouse Embryonic Stem cells dataset described in Islam et al (2014). The data is provided in the folder 'Data'
+We will illustrate the use of BASiCS using the mouse Embryonic Stem cells dataset described in Islam et al (2014). The data is provided in the folder 'Data' of this repository.
 
 - **Expression counts**: GSE46980_CombinedMoleculeCounts.tab (source: http://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE46980)
 
 - **Quality control information**: 187_3lanes_CA.txt (source: Sten Linnarsson)
 
 - **Input molecules of spike-in genes**: SilverBulletCTRLConc.txt (source: Sten Linnarsson).
+
+## Downloads
+
+Before the tutorial, please make sure to download
+
+* The 3 data files contained in the 'Data' folder of this repository
+* The 5 .txt files contained in the 'Chains' folder of https://www.dropbox.com/sh/0efdyln7moqtypo/AAApP0g2PamfYV4pEqDubfXva?dl=0
+
+## Software requirements
+
+This tutorial was prepared on the statistical software R (https://www.R-project.org). During the tutorial we will use RStudio as an interface. Before the practical session please make sure that you install `R` version 3.1.0 or superior. Once R has been installed, the following libraries have to be installed:
+
+* From BioConductor
+	+ BiocGenerics
+		- `source("http://bioconductor.org/biocLite.R"); biocLite("BiocGenerics")`	  
 
 ## The tutorial
 
