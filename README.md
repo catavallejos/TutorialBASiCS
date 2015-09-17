@@ -1,4 +1,4 @@
-# Tutorial BASiCS
+# Tutorial about the use of  BASiCS
 
 This repository contains a tutorial for the analysis of single-cell RNA-seq datasets using BASiCS (Vallejos et al, 2015). 
 
@@ -21,7 +21,7 @@ Before the tutorial, please make sure to download
 
 ## Software requirements
 
-This tutorial was prepared on the statistical software R (https://www.R-project.org). During the tutorial we will use RStudio as an interface. Before the practical session, please make sure you install `R` version 3.1.0 or superior. Once R has been installed, the following libraries have to be installed:
+This tutorial was prepared using the statistical software R (https://www.R-project.org). During the tutorial we will use RStudio as an interface. Before the practical session, please make sure you install `R` version 3.1.0 or superior. Once R has been installed, the following libraries have to be installed:
 
 * From BioConductor
 	+ BiocGenerics
@@ -32,7 +32,11 @@ This tutorial was prepared on the statistical software R (https://www.R-project.
 	+ methods
 	+ coda
 	+ devtools
-		- `install.packages("PACKAGE-NAME") 
+		- `install.packages("PACKAGE-NAME")
+
+* From Github
+	+ BASiCS
+		- `library(devtools); install_github('catavallejos/BASiCS')` 
 
 ## The tutorial
 
