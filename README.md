@@ -44,17 +44,17 @@ Materials are to be uploaded on Friday 18th of September
 
 ## Contact
 
-Any doubts please contact catalina.vallejos@mrc-bsu.cam.ac.uk
+Any doubts please contact catalina.vallejos 'at' mrc-bsu.cam.ac.uk
 
 
 ## References
 
-Catalina A. Vallejos, John C. Marioni and Sylvia Richardson (2015)
+* Catalina A. Vallejos, John C. Marioni and Sylvia Richardson (2015)
 
 BASiCS: Bayesian Analysis of Single-Cell Sequencing Data
 PLOS Computational Biology
 
-Saiful Islam, Amit Zeisel, Simon Joost, Gioele La Manno, Pawel Zajac, Maria Kasper, Peter Lönnerberg and Sten Linnarsson (2014)
+* Saiful Islam, Amit Zeisel, Simon Joost, Gioele La Manno, Pawel Zajac, Maria Kasper, Peter Lönnerberg and Sten Linnarsson (2014)
 
 Quantitative single-cell RNA-seq with unique molecular identifiers
 Nature Methods
