@@ -21,11 +21,18 @@ Before the tutorial, please make sure to download
 
 ## Software requirements
 
-This tutorial was prepared on the statistical software R (https://www.R-project.org). During the tutorial we will use RStudio as an interface. Before the practical session please make sure that you install `R` version 3.1.0 or superior. Once R has been installed, the following libraries have to be installed:
+This tutorial was prepared on the statistical software R (https://www.R-project.org). During the tutorial we will use RStudio as an interface. Before the practical session, please make sure you install `R` version 3.1.0 or superior. Once R has been installed, the following libraries have to be installed:
 
 * From BioConductor
 	+ BiocGenerics
 		- `source("http://bioconductor.org/biocLite.R"); biocLite("BiocGenerics")`	  
+* From CRAN
+	+ data.table  
+	+ Rcpp
+	+ methods
+	+ coda
+	+ devtools
+		- `install.packages("PACKAGE-NAME") 
 
 ## The tutorial
 
