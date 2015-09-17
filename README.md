@@ -51,10 +51,8 @@ Any doubts please contact catalina.vallejos 'at' mrc-bsu.cam.ac.uk
 
 * Catalina A. Vallejos, John C. Marioni and Sylvia Richardson (2015)
 
-BASiCS: Bayesian Analysis of Single-Cell Sequencing Data
-PLOS Computational Biology
+BASiCS: Bayesian Analysis of Single-Cell Sequencing Data. *PLOS Computational Biology*
 
 * Saiful Islam, Amit Zeisel, Simon Joost, Gioele La Manno, Pawel Zajac, Maria Kasper, Peter Lönnerberg and Sten Linnarsson (2014)
 
-Quantitative single-cell RNA-seq with unique molecular identifiers
-Nature Methods
+Quantitative single-cell RNA-seq with unique molecular identifiers. *Nature Methods*
