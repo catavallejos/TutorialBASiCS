@@ -32,7 +32,7 @@ This tutorial was prepared using the statistical software R (https://www.R-proje
 	+ methods
 	+ coda
 	+ devtools
-		- `install.packages("PACKAGE-NAME")
+		- `install.packages("PACKAGE-NAME")`
 
 * From Github
 	+ BASiCS
