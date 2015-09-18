@@ -40,7 +40,7 @@ This tutorial was prepared using the statistical software R (https://www.R-proje
 
 ## The tutorial
 
-Materials are to be uploaded on Friday 18th of September
+Scripts and slides to be uploaded on Saturday 19th of September
 
 ## Contact
 
