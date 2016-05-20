@@ -21,11 +21,14 @@ Before the tutorial, please make sure to download
 
 ## Software requirements
 
-This tutorial was prepared using the statistical software R (https://www.R-project.org). During the tutorial we will use RStudio as an interface. Before the practical session, please make sure you install `R` version 3.1.0 or superior. Once R has been installed, the following libraries have to be installed:
+This tutorial was prepared using the statistical software R (https://www.R-project.org). During the tutorial we will use RStudio as an interface. Before the practical session, please make sure you install `R` version 3.3.0 or superior. Once R has been installed, the following libraries have to be installed:
 
 * From BioConductor
 	+ BiocGenerics
-		- `source("http://bioconductor.org/biocLite.R"); biocLite("BiocGenerics")`	  
+		- `source("http://bioconductor.org/biocLite.R"); biocLite("BiocGenerics")`
+	+ scran	(this requires R 3.3.0 or superior and the latest release the BioConductor)
+	 	- `source("http://bioconductor.org/biocLite.R"); biocLite("scran")`
+    
 * From CRAN
 	+ data.table  
 	+ Rcpp
@@ -53,6 +56,6 @@ Any doubts please contact catalina.vallejos 'at' mrc-bsu.cam.ac.uk
 
 BASiCS: Bayesian Analysis of Single-Cell Sequencing Data. *PLOS Computational Biology*
 
-* Saiful Islam, Amit Zeisel, Simon Joost, Gioele La Manno, Pawel Zajac, Maria Kasper, Peter Lönnerberg and Sten Linnarsson (2014)
+* Saiful Islam, Amit Zeisel, Simon Joost, Gioele La Manno, Pawel Zajac, Maria Kasper, Peter Lönnerberg and Sten Linnarsson (2014)
 
 Quantitative single-cell RNA-seq with unique molecular identifiers. *Nature Methods*
