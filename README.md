@@ -47,7 +47,7 @@ Scripts and slides are available in the folders 'Scripts' and 'Slides' of this r
 
 ## Contact
 
-Any doubts please contact catalina.vallejos 'at' mrc-bsu.cam.ac.uk
+Any doubts please contact cvallejos 'at' turing.ac.uk
 
 
 ## References
