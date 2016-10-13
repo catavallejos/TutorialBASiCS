@@ -1,0 +1,603 @@
+---
+title: 'Learning the BASiCS: a Bayesian approach to single-cell RNA-seq data analysis'
+author: "Catalina Vallejos and Aaron Lun"
+date: '`r Sys.Date()`'
+output:
+  html_document:
+      toc: true
+      toc_float: 
+        collapsed: false
+      number_sections: false 
+---
+
+```{r echo = FALSE}
+options(width = 60)
+```
+
+# Setting up the R session 
+
+Open a new session of R Studio
+
+- To clean the existig R environment use 
+```{r CleanEnvironment}
+rm(list = ls())
+```
+
+- Install required libraries from BioConductor 
+```{r InstallBiocGenerics, eval=FALSE}
+source("http://bioconductor.org/biocLite.R")
+biocLite("BiocGenerics")
+biocLite("scran")
+biocLite("scater")
+``` 
+
+- Install BASiCS from Github 
+```{r InstallBASiCS, eval=FALSE}
+library(devtools)
+install_github('catavallejos/BASiCS')
+```
+
+Load the libraries that will be used througout the analysis
+
+- To perform the analysis
+
+```{r LoadBASiCS, error=FALSE, warning=FALSE, message=FALSE}
+library(scran)
+library(scater)
+library(BASiCS)
+```
+
+- For fast pre-processing of large datasets
+
+```{r LoadDataTable, warning=FALSE}
+# install.packages("data.table")
+library(data.table) 
+```
+
+# Example dataset
+
+To illustrate BASiCS, we analyse the mouse embryonic stem cell (ESC) dataset described in Islam et al (2014)\footnote{Islam et al (2014). Quantitative single-cell RNA-seq with unique molecular identifiers. \emph{Nature Methods}. doi:10.1038/nmeth.2772}. In these data, expression counts are recorded in terms of Unique Molecular Identifiers (UMI), removing amplification biases. 
+
+Let `data.path` be the directory where the data is stored, e.g.
+
+```{r DataPathCata, echo = FALSE}
+core.path = "~/Documents/Github/TutorialBASiCS/"
+data.path = file.path(core.path, "Data")
+```
+
+```{r DataPath, eval = FALSE}
+core.path = "~/Documents/Github/TutorialBASiCS/"
+data.path = file.path(core.path, "Data")
+```
+
+\normalsize
+The following files must be stored in the `data.path` directory:
+
+- **Expression counts**: `GSE46980_CombinedMoleculeCounts.tab`
+
+- **Quality control information**: `187_3lanes_CA.txt` (provided by Sten Linnarsson). 
+
+- **Input molecules of spike-in genes**: `SilverBulletCTRLConc.txt` (provided by Sten Linnarsson). 
+
+These files are provided within the materials of this tutorial. 
+
+## Loading the data
+
+To read the matrix of expression counts (excluding metadata) use:
+
+\scriptsize
+```{r LoadCounts, results='hide'}
+Counts <- read.table(file.path(data.path,
+                            "GSE46980_CombinedMoleculeCounts.tab"),
+                      skip = 7, sep = "\t", 
+                      colClasses = c(rep("NULL", 7),
+                                     rep("numeric", 96)))
+dim(Counts)
+```
+\normalsize
+This dataset contains `r nrow(Counts)` genes (one at each row) and `r ncol(Counts)` cells (one at each column). 
+
+## Metadata (gene names)
+
+Gene names are given by 
+\scriptsize
+```{r GenesNames1, results='hide'}
+Genes <- read.table(file.path(data.path,
+                           "GSE46980_CombinedMoleculeCounts.tab"),
+                           skip = 7, sep = "\t",
+                           colClasses = c("character", 
+                                          rep("NULL", 102)))[,1]
+rownames(Counts) <- Genes
+```
+
+## Metadata (cell identifiers)
+
+Cell identifiers are given by 
+\scriptsize
+```{r CellsIds, results='hide'}
+Cells <- read.table(file.path(data.path,
+                        "GSE46980_CombinedMoleculeCounts.tab"),
+                        skip = 5, nrows = 1, header = F)[-1]
+Cells <- as.vector(t(Cells))
+colnames(Counts) <- Cells 
+```
+
+## What does the data look like?
+\footnotesize
+\columnsbegin
+\column{.9\textwidth}
+```{r ShowCounts}
+head(Counts[, 1:10], n = 10)
+```
+\column{.1\textwidth}
+\vspace{-2cm}
+\columnsend
+
+
+## Filtering cells
+
+We adopt the same quality control criterion as in Islam et al (2014).
+
+```{r QC_Cells1}
+QC_Info <- read.table(file.path(data.path,
+                             "187_3lanes_CA.txt"),
+                   header = TRUE)
+GoodCells <- QC_Info$Well[QC_Info$GoodCell==1]
+```
+
+We also discard 9 cells that are not ESCs (information provided by Sten Linnarsson)
+
+```{r QC_Cells2}
+NotESC <- c("D02", "E02", "A06", "H07", "D08", 
+      "A09", "G10", "F12", "G12") 
+GoodCells <- GoodCells[!(GoodCells %in% NotESC)]
+```
+To remove cells that do not pass the inclusion criteria use
+```{r QC_Cells3, results='hide'}
+CountsQC <- subset(Counts, 
+                select = Cells %in% GoodCells)
+dim(CountsQC)
+```
+
+After this filter, \alert{`r ncol(CountsQC)`} cells are left to be analysed.
+
+## Filtering genes
+
+To compute the total number of counts (over all cells) per gene use
+
+```{r FilterGenes1, results='hide'}
+TotCountsPerGene = rowSums(CountsQC)
+sum(TotCountsPerGene == 0)
+```
+\normalsize
+
+- We observe \alert{`r sum(TotCountsPerGene == 0)`} genes with zero counts
+- Many other genes have just a few counts (in a few cells!)
+
+Here, we only include those genes with (on average) at least 1 count per cell (i.e. when total counts are at least equal to the number of analysed cells).
+```{r FilterGenes2, results='hide'}
+GenesInclude = TotCountsPerGene >= 41
+CountsQC = as.matrix(CountsQC[GenesInclude, ]) 
+dim(CountsQC)
+```
+\normalsize
+
+After this filter, \alert{`r nrow(CountsQC)`} genes are left to be analysed. 
+
+# Running BASiCS
+
+## Building the BASiCS input dataset
+
+As an input, BASiCS requires an object of class `BASiCS_Data`. To create this object, we need the following elements
+
+- A matrix of expression counts, whose `rownames` contain the associated gene names
+
+- A logical vector indicating whether or not each gene is a technical spike
+
+- A `data.frame` whose first and second columns contain the gene names assigned to the spike-in genes and the associated input number of molecules, respectively. 
+
+First, we create a variable indicating whether or not a gene is a technical spike (for every gene)
+
+```{r InputBASiCS1}
+TechQC = grepl("SPIKE", rownames(CountsQC))
+```
+
+REMINDER: Gene names must be stored as `rownames(CountsQC)`
+
+
+Secondly, we need the input number of spike-in molecules per cell. This is provided in `SilverBulletCTRLConc.txt`. 
+
+\footnotesize
+```{r InputBASiCS3}
+SpikeInfo <- read.table(file.path(data.path,
+                                "SilverBulletCTRLConc.txt"),
+                      sep = "\t", header = TRUE,
+                      colClasses = c(rep("NULL", 5),
+                                     "character",
+                                     rep("NULL", 3),
+                                     "numeric"))
+head(SpikeInfo, n = 4)
+```
+
+NOTE: These values can be calculated using experimental information. For each spike-in gene $i$, we use \vspace{-0.2cm} 
+\begin{equation*} \mu_{i} = C_i \times 10^{-18} \times (6.022 \times 10^{23}) \times (9 \times 10^{-3}) \times D \hspace{0.5cm} \mbox{where,} \end{equation*}\vspace{-0.1cm}
+
+- $C_i$ is the concentration of the spike $i$ in the ERCC mix
+- $10^{-18}$ is to convert att to mol
+- $6.022 \times 10^{23}$ is the Avogadro number (mol $\rightarrow$ molecule)
+- $9 \times 10^{-3}$ is the volume added into each chamber
+- $D$ is a dilution factor
+
+
+This file include spike-in genes that did not pass the inclusion criteria. To remove these use
+
+\scriptsize
+```{r InputBASiCS4}
+SpikeInfoQC <- SpikeInfo[SpikeInfo$Name %in% rownames(CountsQC)[TechQC],]
+```
+
+Finally, to create a `BASiCS_Data` object use
+
+\footnotesize
+```{r NewData, eval=FALSE}
+Data = newBASiCS_Data(Counts = CountsQC, 
+                   Tech = TechQC, 
+                   SpikeInfo = SpikeInfoQC)
+```
+\tiny
+```{r NewData2, echo=FALSE}
+Data = newBASiCS_Data(Counts = CountsQC, 
+                   Tech = TechQC, 
+                   SpikeInfo = SpikeInfoQC)
+```
+
+## The BASiCS model
+
+For each gene $i$ and cell $j$ the model implemented in BASiCS is 
+\footnotesize
+\begin{equation*} \label{eqSCE:model2} X_{ij} |  \mu_i, \phi_j, \nu_j, \rho_{ij}  \sim \left\{
+\begin{array}{ll}
+\mbox{Poisson}( \phi_j \nu_j \mu_i \rho_{ij}), & \hbox{if gene $i$ is biological;} \\
+\mbox{Poisson}(\nu_j  \mu_i), & \hbox{if gene $i$ is a technical spike, with}
+\end{array} \right. \end{equation*} \begin{equation*} \label{eqSCE:model2_1} \nu_j|s_j,\theta \sim \mbox{Gamma}(1/\theta,1/ (s_j \theta)) \hspace{1cm} \mbox{and} \hspace{1cm} \rho_{ij} | \delta_i \sim \mbox{Gamma} (1/\delta_i,1/\delta_i), \end{equation*}
+
+\normalsize
+
+- $\phi_j$ and $s_j$ are cell-specific normalising constants
+- $\nu_j$ and $\theta$ capture technical noise
+- $\mu_i$ is the overall expression rate of a gene $i$
+- $\delta_i$ controls cell-to-cell biological variability of a gene $i$
+
+## Running BASiCS
+
+The `BASiCS_MCMC` function runs the MCMC sampler. It receives multiple arguments, however most of them are optional. There are 4 arguments that are required to run this function:
+
+- `Data`: an object of class `BASiCS_Data`.
+
+- `N`:  Total number of iterations for the MCMC sampler. 
+
+- `Thin`:  Thining period for the MCMC sampler. 
+
+- `Burn`: Burn-in period for the MCMC sampler. 
+
+
+For more information about the `BASiCS_MCMC` function use
+```{r RunBASiCS0, eval=FALSE}
+help("BASiCS_MCMC", package = "BASiCS")
+```
+
+For a short run of the model use
+
+```{r RunBASiCS1, results = 'hide'}
+MCMC_Output <- BASiCS_MCMC(Data, 
+                        N = 20, 
+                        Thin = 2, 
+                        Burn = 4)
+```
+
+Optional parameters 
+
+\small
+
+`StoreChains`:
+
+If `TRUE`, the slots of the generated `BASiCS_Chain` object are stored in separate `.txt` files (one iteration at each row) using `RunName` argument to index file names (default: `StoreChains = FALSE`)
+
+\vspace{0.5cm}
+
+`StoreDir`:
+
+Directory where output files are stored (default: `StoreDir = getwd()`)
+
+\vspace{0.5cm}
+
+\pause
+
+\alert{For other optional parameters refer to the documentation} 
+
+Once the MCMC algorithm has run, we need to assess whether the chains \alert{converged} to their stationary distribution.
+
+- Combination of visual inspections and test-based diagnostics
+
+- The `R` library `coda` includes several convergence diagnostics 
+
+More details in separate slides ... 
+
+\scriptsize
+
+```{r TraceplotMuDelta, fig.height=7, fig.width=10}
+par(mfrow = c(2,1))
+plot(MCMC_Output, Param = "mu", Gene = 1)
+plot(MCMC_Output, Param = "delta", Gene = 1)
+```
+\scriptsize
+
+```{r TraceplotPhiS, fig.height=7, fig.width=10}
+par(mfrow = c(2,1))
+plot(MCMC_Output, Param = "phi", Cell = 1)
+plot(MCMC_Output, Param = "s", Cell = 1)
+```
+
+\scriptsize
+
+```{r TraceplotNuTheta, fig.height=7, fig.width=10}
+par(mfrow = c(2,1))
+plot(MCMC_Output, Param = "nu", Cell = 1)
+plot(MCMC_Output, Param = "theta")
+```
+
+Clearly, `N = 20` iterations is not enough. Before continuing, we load the provided pre-computed MCMC chains `N = 20000` (~39 min run time on a Macbook). These were obtained using the following command
+
+## Pre-run chains
+
+```{r RunLongChain, eval=FALSE}
+MCMC_Output <- BASiCS_MCMC(Data, 
+                           N = 20000, 
+                           Thin = 10, 
+                           Burn = 10000,
+                           StoreChains = TRUE,
+                           StoreDir = chains.path,
+                           RunName = "Tutorial2016")
+```
+
+
+\tiny
+```{r LoadLongChains0, echo = FALSE}
+chains.path = "~/Downloads/Chains"
+```
+
+```{r LoadLongChains}
+ChainMu=fread(file.path(chains.path,"chain_mu_Tutorial2016.txt"), header = TRUE)
+ChainDelta=fread(file.path(chains.path,"chain_delta_Tutorial2016.txt"), header = TRUE)
+ChainPhi=fread(file.path(chains.path,"chain_phi_Tutorial2016.txt"), header = TRUE)
+ChainS=fread(file.path(chains.path,"chain_s_Tutorial2016.txt"), header = TRUE)
+ChainNu=fread(file.path(chains.path,"chain_nu_Tutorial2016.txt"), header = TRUE)
+ChainTheta=fread(file.path(chains.path,"chain_theta_Tutorial2016.txt"), header = TRUE)
+
+MCMC_Output = newBASiCS_Chain(mu = as.matrix(ChainMu),
+                           delta = as.matrix(ChainDelta),
+                           phi = as.matrix(ChainPhi),
+                           s = as.matrix(ChainS),
+                           nu = as.matrix(ChainNu),
+                           theta = as.matrix(ChainTheta))
+```
+
+\scriptsize
+
+```{r TraceplotMuDelta2, fig.height=7, fig.width=10}
+par(mfrow = c(2,1))
+plot(MCMC_Output, Param = "mu", Gene = 1)
+plot(MCMC_Output, Param = "delta", Gene = 1)
+```
+
+\scriptsize
+
+```{r TraceplotPhiS2, fig.height=7, fig.width=10}
+par(mfrow = c(2,1))
+plot(MCMC_Output, Param = "phi", Cell = 1)
+plot(MCMC_Output, Param = "s", Cell = 1)
+```
+
+\scriptsize
+
+```{r TraceplotNuTheta2, fig.height=7, fig.width=10}
+par(mfrow = c(2,1))
+plot(MCMC_Output, Param = "nu", Cell = 1)
+plot(MCMC_Output, Param = "theta")
+```
+
+DIY: Apply other convergence diagnostics to 
+
+- Randomly selected parameters
+
+- Average values across groups of parameters
+
+\vspace{0.5cm}
+
+HINT: To return the MCMC chain related to the parameter indicated by `Param` (1 column per param, 1 row per iteration) use
+
+```{r HINT1, eval = FALSE}
+displayChainBASiCS(MCMC_Output, Param = "mu")
+```
+
+# Post-processing of BASiCS results
+
+## Posterior summary
+
+The MCMC chains generated by the `BASiCS_MCMC` function contain samples from the posterior distribuion of all model parameters. 
+
+How can we summarise this information?
+
+Some commonly used summaries are:
+
+- Posterior means, medians, modes
+
+- Highest Posterior Density (HPD) intervals
+
+\scriptsize
+```{r Summary}
+MCMC_Summary <- Summary(MCMC_Output)
+head(displaySummaryBASiCS(MCMC_Summary, Param = "mu"))
+```
+
+\centering
+\scriptsize
+```{r PlotHPD, fig.height=5, fig.width=5}
+plot(density(displayChainBASiCS(MCMC_Output, Param = "mu")[,1]),
+  main = displayGeneNames(Data)[1],
+  xlab = expression(paste("Expression rate ",mu[i])))
+abline(v = displaySummaryBASiCS(MCMC_Summary, Param = "mu")[1,], lty = 2)
+```
+
+\scriptsize
+
+
+```{r PlotSummaryPhi, fig.height=5, fig.width=5}
+plot(MCMC_Summary, Param = "phi", 
+  main = "mRNA content")
+```
+
+- There is some heterogeneity in the total mRNA content per cell
+
+- Yet, this is still a very homogeneous population of cells 
+
+
+
+```{r PlotSummaryS, fig.height=5, fig.width=5}
+plot(MCMC_Summary, Param = "s", 
+  main = "Capture efficiency")
+abline(h = 0.41, lty = 2)
+```
+
+- No amplification biases, as expected for UMI-based counts
+
+
+
+### Expression vs variability
+
+\scriptsize
+
+```{r CrossPlotSummaryMuDelta, fig.height=5, fig.width=5}
+plot(MCMC_Summary, 
+  Param = "mu", Param2 = "delta", 
+  log = "x", col = 8)
+```
+
+- Highly expressed genes are more stable (core celullar processes)
+
+- More variable genes concentrated on the lower end of expression
+
+This figure changes when analysing more heterogeneous cell populations
+
+\columnsend
+
+
+## Variance decomposition
+
+BASiCS also provides a variance decomposition for the total variability of gene expression
+
+\centering
+
+\scriptsize
+
+\columnsbegin
+\column{.5\textwidth}
+\centering
+```{r VarDecomp1, fig.height=5, fig.width=4}
+VD = BASiCS_VarianceDecomp(Data, 
+                        MCMC_Output)
+```
+\column{.5\textwidth}
+\vspace{1.5cm}
+
+- Overall, more than 20% of the total variability is technical
+
+\columnsend
+
+We also define \begin{equation*}
+\sigma_i = \frac{\delta_i (\theta+1)  }{[(\phi s)^* \mu_i ]^{-1} + \theta + \delta_i   (\theta+1) }, \hspace{0.5cm} (\phi s)^* = \underset{j \in \{1,\ldots,n\}}{\mathrm{median}} \left\{ \phi_j s_j \right\}
+\end{equation*}
+
+as the proportion of variability related to biological cell-to-cell heterogeneity in a \alert{typical cell}
+
+Similar expressions can be defined for the components related to technical variability and shot noise
+
+\tiny
+
+```{r VarDecomp2}
+head(VD)
+
+tail(VD)
+```
+
+## Detection of highly and lowly variable genes
+
+- Highly Variable Genes (HVG): for a given \alert{variance threshold} $\gamma_{_H}$, and \alert{evidence threshold} $\alpha_{_H}$, BASiCS labels a gene as HVG if:
+\begin{equation*}  \pi^H_{ i  } (\gamma_{_H})= \mbox{P} \left(\sigma_{i} > {\gamma_{_H}} | \; \; \{ \text{Data}
+\} \right) > {\alpha_{_H}} \end{equation*} 
+
+- Lowly Variable Genes (LVG): similarly, for a  given \alert{variance threshold} $\gamma_{_L}$, and \alert{evidence threshold} $\alpha_{_L}$, we classify as LVG those for which:
+\begin{equation*}  \pi^H_{ i  } (\gamma_{_L})= \mbox{P} \left(\sigma_{i} < {\gamma_{_L}} | \; \; \{ \text{Data} \} \right) > {\alpha_{_L}} \end{equation*}
+
+How to determine these thresholds?
+
+- $\gamma_{_H}$ and $\gamma_{_L}$ have a biological meaning and therefore can be chosen by an expert
+
+- $\alpha_{_H}$ and $\alpha_{_L}$ are evidence thresholds and can be chosen by controlling the trade-off between EFDR and EFNR.
+
+### Highly Variable Genes
+
+\scriptsize
+```{r DetectHVG, fig.height=5, fig.width=10}
+par(mfrow = c(1,2))
+DetectHVG <- BASiCS_DetectHVG(Data, MCMC_Output, 
+                           VarThreshold = 0.79, Plot = TRUE)
+```
+
+\tiny
+```{r DetectHVGShow}
+head(DetectHVG$Table)
+```
+
+### Lowly variable genes
+
+\scriptsize
+```{r DetectLVG, fig.height=5, fig.width=10}
+par(mfrow = c(1,2))
+DetectLVG <- BASiCS_DetectLVG(Data, MCMC_Output, 
+                           VarThreshold = 0.41, Plot = TRUE)
+```
+
+\tiny
+```{r DetectLVGShow}
+head(DetectLVG$Table)
+```
+
+# And beyond ... 
+
+There are \alert{many} aspects of scRNA-seq and downstream analysis that were not covered by this tutorial
+
+## Batch effects
+
+The current implementation of BASiCS also allows batch-effect correction using batch-specific values of $\theta$. To use this feature, the `BASiCS_Data` object requires an additional element. For example
+
+\tiny
+```{r DataBatch}
+Data = newBASiCS_Data(Counts = CountsQC, 
+                   Tech = TechQC, 
+                   SpikeInfo = SpikeInfoQC, 
+                   BatchInfo = c(rep(1, times = 20), rep(2, times = 21)))                       
+```
+
+## Denoised data
+  
+You can extract **normalised and denoised** expression rates to be used for other downstream analyses. For each gene $i$ and cell $j$, these are defined as \begin{equation*} \mbox{DR}_{ij} = \mu_i \rho_{ij} \end{equation*}
+  
+Posterior estimates for these quantities can be obtained using
+  
+\scriptsize
+```{r Denoised}
+DR = BASiCS_DenoisedRates(Data, MCMC_Output)
+```
+
+# Questions?
