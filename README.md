@@ -17,7 +17,7 @@ We will illustrate the use of BASiCS using the mouse Embryonic Stem cells datase
 Before the tutorial, please make sure to download
 
 * The 3 data files contained in the 'Data' folder of this repository
-* The 5 .txt files contained in the 'Chains' folder of https://www.dropbox.com/sh/0efdyln7moqtypo/AAApP0g2PamfYV4pEqDubfXva?dl=0
+* The 5 .txt files contained in the 'Chains2016' folder of https://www.dropbox.com/sh/0efdyln7moqtypo/AAApP0g2PamfYV4pEqDubfXva?dl=0 
 
 ## Software requirements
 
@@ -43,7 +43,8 @@ This tutorial was prepared using the statistical software R (https://www.R-proje
 
 ## The tutorial
 
-Scripts and slides are available in the folders 'Scripts' and 'Slides' of this repository, respectively. 
+The script and results of this tutorial are available in the folder 'Materials'.
+
 
 ## Contact
 
