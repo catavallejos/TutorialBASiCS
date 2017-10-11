@@ -2,6 +2,11 @@
 
 This repository contains a tutorial for the analysis of single-cell RNA-seq datasets using BASiCS (Vallejos et al, 2015). 
 
+
+**NOTE: THIS TUTORIAL WAS CREATED USING AN OLD VERSION OF BASiCS AND ITS CODE IS OUTDATED AND IS NO LONGER MAINTAINED. FOR UP-TO-DATE DOCUMENTATION, PLEASE REFER TO THE VIGNETTE AVAILABLE AT THE [BASiCS GITHUB REPOSITORY](https://github.com/catavallejos/BASiCS) OR TO OUR [WIKI PAGE](https://github.com/catavallejos/BASiCS/wiki).**
+
+
+
 ## Example dataset
 
 We will illustrate the use of BASiCS using the mouse Embryonic Stem cells dataset described in Islam et al (2014). The data is provided in the folder 'Data' of this repository.
